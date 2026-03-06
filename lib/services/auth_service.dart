@@ -1,15 +1,24 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  // Lazily initialize GoogleSignIn only if supported
+  GoogleSignIn? __googleSignIn;
+  GoogleSignIn get _googleSignIn {
+    __googleSignIn ??= GoogleSignIn();
+    return __googleSignIn!;
+  }
+
+  bool get _isGoogleSupported =>
+      kIsWeb || (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
 
   /// Get current authenticated user
   User? get currentUser => _auth.currentUser;
 
-  /// Stream of auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// Get current user ID
@@ -22,6 +31,13 @@ class AuthService {
 
   /// Sign in with Google
   Future<User?> signInWithGoogle() async {
+    if (!_isGoogleSupported) {
+      debugPrint(
+        '⚠️ Google Sign-In is not supported on this platform (Windows/Linux).',
+      );
+      throw Exception('Google Sign-In is only available on Mobile and Web.');
+    }
+
     try {
       // Trigger the Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -33,7 +49,8 @@ class AuthService {
       }
 
       // Obtain auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
@@ -42,7 +59,9 @@ class AuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
 
       debugPrint('✅ Google sign-in successful: ${userCredential.user?.email}');
       return userCredential.user;
@@ -64,10 +83,8 @@ class AuthService {
     String? displayName,
   }) async {
     try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       // Update display name if provided
       if (displayName != null && userCredential.user != null) {
@@ -93,10 +110,8 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final UserCredential userCredential = await _auth
+          .signInWithEmailAndPassword(email: email, password: password);
 
       debugPrint('✅ Email sign-in successful: ${userCredential.user?.email}');
       return userCredential.user;
@@ -132,11 +147,13 @@ class AuthService {
   /// Sign out from all providers
   Future<void> signOut() async {
     try {
-      // Try to disconnect Google account (ignore errors if not connected)
-      try {
-        await _googleSignIn.disconnect();
-      } catch (e) {
-        debugPrint('Google disconnect skipped: $e');
+      // Try to disconnect Google account (ignore errors if not supported/connected)
+      if (_isGoogleSupported) {
+        try {
+          await _googleSignIn.disconnect();
+        } catch (e) {
+          debugPrint('Google disconnect skipped: $e');
+        }
       }
 
       // Sign out from Firebase
@@ -232,11 +249,17 @@ class AuthService {
 
   /// Reauthenticate user with Google
   Future<void> reauthenticateWithGoogle() async {
+    if (!_isGoogleSupported) {
+      debugPrint('Google Re-auth not supported on this platform.');
+      return;
+    }
+
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -296,7 +319,9 @@ class AuthService {
         debugPrint('Too many requests. Please try again later.');
         break;
       case 'requires-recent-login':
-        debugPrint('This operation requires recent authentication. Please log in again.');
+        debugPrint(
+          'This operation requires recent authentication. Please log in again.',
+        );
         break;
       default:
         debugPrint('Authentication error: ${e.message}');

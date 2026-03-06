@@ -1,60 +1,57 @@
 import 'package:flutter/material.dart';
 import '../models/expense_model.dart';
-import '../services/firestore_service.dart';
+import '../services/expense_repository.dart';
 import '../services/ml_service.dart';
+import '../core/ui_state.dart';
 
 class ExpenseProvider extends ChangeNotifier {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ExpenseRepository _repository = ExpenseRepository();
 
-  /// Get expenses stream
-  Stream<List<ExpenseModel>> get expenses => _firestoreService.getExpenses();
+  UiState<List<ExpenseModel>> _state = const Initial();
+  UiState<List<ExpenseModel>> get state => _state;
 
-  /// Add a new expense
-  Future<void> addExpense(String title, double amount) async {
-    final category = MLService.predictCategory(title);
+  ExpenseProvider() {
+    _init();
+  }
 
-    final expense = ExpenseModel(
-      id: '', // Firestore will generate the ID
-      title: title,
-      amount: amount,
-      category: category,
-      date: DateTime.now(),
+  Stream<List<ExpenseModel>> get expenses => _repository.getExpenses();
+
+  void _init() {
+    _state = const Loading();
+    _repository.getExpenses().listen(
+      (expenses) {
+        _state = Success(expenses);
+        notifyListeners();
+      },
+      onError: (error) {
+        _state = Failure(error.toString());
+        notifyListeners();
+      },
     );
+  }
 
+  Future<void> addExpense(String title, double amount) async {
     try {
-      await _firestoreService.addExpense(expense);
-      notifyListeners();
+      final category = MLService.predictCategory(title);
+      await _repository.addExpense(title, amount, category);
     } catch (e) {
-      debugPrint('Error adding expense: $e');
       rethrow;
     }
   }
 
-  /// Update an existing expense
   Future<void> updateExpense(String id, String title, double amount) async {
-    final category = MLService.predictCategory(title);
-    
     try {
-      await _firestoreService.updateExpense(id, {
-        'title': title,
-        'amount': amount,
-        'category': category,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
-      notifyListeners();
+      final category = MLService.predictCategory(title);
+      await _repository.updateExpense(id, title, amount, category);
     } catch (e) {
-      debugPrint('Error updating expense: $e');
       rethrow;
     }
   }
 
-  /// Delete an expense
   Future<void> deleteExpense(String id) async {
     try {
-      await _firestoreService.deleteExpense(id);
-      notifyListeners();
+      await _repository.deleteExpense(id);
     } catch (e) {
-      debugPrint('Error deleting expense: $e');
       rethrow;
     }
   }

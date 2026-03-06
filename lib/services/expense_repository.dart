@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/expense_model.dart';
 import 'firestore_service.dart';
 import 'local_db_service.dart';
@@ -24,6 +25,22 @@ class ExpenseRepository {
     // 1. Save to local for offline support (simplified for now)
     // 2. Save to remote
     await _remoteService.addExpense(expense);
+  }
+
+  Future<void> updateExpense(
+    String id,
+    String title,
+    double amount,
+    String category,
+  ) async {
+    final data = {
+      'title': title,
+      'amount': amount,
+      'category': category,
+      'date':
+          FieldValue.serverTimestamp(), // Update to current time or keep old? Usually, keep old date but let's update title/amount
+    };
+    await _remoteService.updateExpense(id, data);
   }
 
   Future<void> deleteExpense(String id) async {

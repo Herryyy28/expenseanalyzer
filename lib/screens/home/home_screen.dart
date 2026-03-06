@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../expense/expense_list_screen.dart';
 import '../analytics/charts_screen.dart';
 import '../settings/budget_screen.dart';
@@ -14,11 +17,22 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
-  final _screens = const [
-    DashboardScreen(),
-    ExpenseListScreen(),
-    ChartsScreen(),
-    BudgetScreen(),
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.userId != null) {
+        Provider.of<BudgetProvider>(context, listen: false).init(auth.userId!);
+      }
+    });
+  }
+
+  final _screens = [
+    const DashboardScreen(),
+    const ExpenseListScreen(),
+    const ChartsScreen(),
+    const BudgetScreen(),
   ];
 
   @override
@@ -28,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         selectedItemColor: const Color(0xFF5B2EFF),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
         onTap: (i) => setState(() => _index = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Home"),

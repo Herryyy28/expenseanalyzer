@@ -41,21 +41,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
 
     setState(() => _isSaving = true);
     try {
-      // Note: We'll need to add an updateExpense method to ExpenseProvider
-      // For now, let's use the delete + add approach or implement update in provider
       final provider = Provider.of<ExpenseProvider>(context, listen: false);
-      
-      // Since updateExpense isn't in provider yet, I'll delete and re-add or we update provider
-      // Let's assume we'll fix provider next
-      await provider.deleteExpense(widget.expense.id);
-      await provider.addExpense(_titleCtrl.text, amount);
-      
+
+      // Using the newly implemented provider method
+      await provider.updateExpense(widget.expense.id, _titleCtrl.text, amount);
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -77,7 +73,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: "Amount",
                 prefixText: "₹ ",
@@ -92,7 +90,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     ? const CircularProgressIndicator()
                     : const Text("Update Expense"),
               ),
-            )
+            ),
           ],
         ),
       ),
