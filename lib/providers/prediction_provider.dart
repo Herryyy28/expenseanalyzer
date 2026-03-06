@@ -7,8 +7,14 @@ class PredictionProvider extends ChangeNotifier {
 
   double get predictedAmount => _predictedAmount;
 
-  void calculatePrediction(List<ExpenseModel> expenses) {
-    _predictedAmount = MLService.predictNextMonth(expenses);
-    notifyListeners();
+  /// Calculates prediction without notifying listeners immediately 
+  /// to avoid rebuild errors during build phase.
+  void updatePrediction(List<ExpenseModel> expenses) {
+    final newPrediction = MLService.predictNextMonth(expenses);
+    if (_predictedAmount != newPrediction) {
+      _predictedAmount = newPrediction;
+      // We use microtask to notify listeners after the current build frame
+      Future.microtask(() => notifyListeners());
+    }
   }
 }

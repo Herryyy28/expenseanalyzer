@@ -12,11 +12,52 @@ class AddExpenseScreen extends StatefulWidget {
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _titleCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveExpense() async {
+    if (_titleCtrl.text.isEmpty || _amountCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final provider = Provider.of<ExpenseProvider>(context, listen: false);
+      await provider.addExpense(
+        _titleCtrl.text,
+        amount,
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ExpenseProvider>(context, listen: false);
-
     return Scaffold(
       appBar: AppBar(title: const Text("Add Expense")),
       body: Padding(
@@ -25,24 +66,33 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           children: [
             TextField(
               controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: "Expense Title"),
+              decoration: const InputDecoration(
+                labelText: "Expense Title",
+                hintText: "e.g. Grocery, Pizza",
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _amountCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Amount"),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "Amount",
+                prefixText: "₹ ",
+              ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              child: const Text("Add Expense"),
-              onPressed: () async {
-                await provider.addExpense(
-                  _titleCtrl.text,
-                  double.parse(_amountCtrl.text),
-                );
-                Navigator.pop(context);
-              },
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveExpense,
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text("Add Expense"),
+              ),
             )
           ],
         ),

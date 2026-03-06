@@ -101,7 +101,7 @@ class AppTheme {
       ),
 
       // Card Theme
-      cardTheme: cardTheme(
+      cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -246,16 +246,14 @@ class AppTheme {
       ),
 
       // Card Theme
-      cardTheme:
-      cardTheme
-        (
+      cardTheme: CardThemeData(
         color: darkSurface,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-         ),
+      ),
 
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -331,6 +329,4 @@ class AppTheme {
       ),
     );
   }
-
-  static CardThemeData? cardTheme({required Color color, required int elevation, required RoundedRectangleBorder shape, required EdgeInsets margin}) {}
 }

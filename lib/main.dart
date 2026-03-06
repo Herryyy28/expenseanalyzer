@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'dart:io' show Platform;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'config/firebase_options.dart';
 import 'core/app_theme.dart';
@@ -17,6 +18,12 @@ import 'services/local_db_service.dart';
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize FFI for Windows/Linux
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   try {
     // Initialize Firebase only on supported platforms
@@ -46,7 +53,7 @@ bool _isFirebaseSupported() {
   if (kIsWeb) return true;
 
   try {
-    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows;
   } catch (e) {
     return false;
   }
@@ -59,22 +66,15 @@ class SmartExpenseApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Auth Provider
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(),
         ),
-
-        // Expense Provider
         ChangeNotifierProvider<ExpenseProvider>(
           create: (_) => ExpenseProvider(),
         ),
-
-        // Budget Provider
         ChangeNotifierProvider<BudgetProvider>(
           create: (_) => BudgetProvider(),
         ),
-
-        // Prediction Provider
         ChangeNotifierProvider<PredictionProvider>(
           create: (_) => PredictionProvider(),
         ),
@@ -83,20 +83,16 @@ class SmartExpenseApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Smart Expense Analyzer',
         theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme, // Add dark theme support
-        themeMode: ThemeMode.system, // Follow system theme
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
         home: const SplashScreen(),
         routes: AppRoutes.routes,
-
-        // Global error handling
         builder: (context, widget) {
           ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
             return _CustomErrorWidget(errorDetails: errorDetails);
           };
           return widget ?? const SizedBox.shrink();
         },
-
-        // Navigate to error screen on route error
         onUnknownRoute: (settings) {
           return MaterialPageRoute(
             builder: (context) => const _NotFoundScreen(),
@@ -107,58 +103,28 @@ class SmartExpenseApp extends StatelessWidget {
   }
 }
 
-/// Custom error widget for better error display
 class _CustomErrorWidget extends StatelessWidget {
   final FlutterErrorDetails errorDetails;
-
   const _CustomErrorWidget({required this.errorDetails});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 80,
-              ),
+              const Icon(Icons.error_outline, color: Colors.red, size: 80),
               const SizedBox(height: 24),
               const Text(
                 'Oops! Something went wrong',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
               if (kDebugMode) ...[
-                Text(
-                  errorDetails.exception.toString(),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.red,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  errorDetails.stack.toString(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.left,
-                  maxLines: 10,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                const SizedBox(height: 16),
+                Text(errorDetails.exception.toString(), style: const TextStyle(color: Colors.red)),
               ],
             ],
           ),
@@ -168,42 +134,18 @@ class _CustomErrorWidget extends StatelessWidget {
   }
 }
 
-/// 404 Not Found Screen
 class _NotFoundScreen extends StatelessWidget {
   const _NotFoundScreen();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Page Not Found'),
-      ),
+      appBar: AppBar(title: const Text('Page Not Found')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.search_off,
-              size: 100,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              '404',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Page not found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
+            const Icon(Icons.search_off, size: 100, color: Colors.grey),
+            const Text('404', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () => Navigator.of(context).pop(),

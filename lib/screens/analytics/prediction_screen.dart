@@ -10,7 +10,7 @@ class PredictionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
     final predictionProvider =
-    Provider.of<PredictionProvider>(context, listen: false);
+    Provider.of<PredictionProvider>(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Monthly Prediction")),
@@ -21,7 +21,10 @@ class PredictionScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          predictionProvider.calculatePrediction(snapshot.data!);
+          // Trigger prediction update in the provider
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            predictionProvider.updatePrediction(snapshot.data!);
+          });
 
           return Center(
             child: Card(

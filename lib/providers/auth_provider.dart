@@ -27,6 +27,7 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isLoggedIn => isAuthenticated; // Added for compatibility with UI
   String? get userId => _user?.uid;
   String? get userEmail => _user?.email;
   String? get userDisplayName => _user?.displayName;
@@ -64,7 +65,6 @@ class AuthProvider with ChangeNotifier {
       );
 
       // Save/update user in local DB
-      // This would be implemented in your local DB service
       debugPrint('✅ User data synced successfully');
     } catch (e) {
       debugPrint('❌ Error syncing user data: $e');
@@ -72,6 +72,11 @@ class AuthProvider with ChangeNotifier {
   }
 
   // ==================== SIGN IN ====================
+
+  /// Sign in with Google (aliased as login for UI compatibility)
+  Future<bool> login() async {
+    return await signInWithGoogle();
+  }
 
   /// Sign in with Google
   Future<bool> signInWithGoogle() async {
